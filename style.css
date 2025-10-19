@@ -4,7 +4,8 @@
   --accent: #06b6d4;
   --muted: #94a3b8;
   --glass: rgba(255,255,255,0.03);
-  --success: rgba(255, 255, 255, 0.3)00;
+  --success: #06b6d4; /* Changed for better visibility with white text */
+  --error: #ef4444; /* Added for error messages */
 }
 
 * { box-sizing: border-box; }
@@ -39,24 +40,29 @@ header {
 header h1 { font-size: 30px; margin: 0; }
 header p { margin: 0; color: var(--muted); font-size: 14px; }
 
-.grid {
+/* Renamed and modified grid for main layout */
+.main-grid {
   display: grid;
+  grid-template-columns: 2fr 1fr; /* Left panel 2/3, Right sidebar 1/3 */
   gap: 18px;
-  padding: 20px;
+  padding: 20px; /* Added padding to maintain spacing */
 }
 
 .panel {
   background: var(--card);
   border-radius: 10px;
   padding: 20px;
+  padding-top: 5px; /* Adjust if needed based on h2 margin */
 }
 
 .form-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
   align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
 }
+
+/* Inputs fill available space */
 .form-row input {
   flex: 1;
   padding: 10px 12px;
@@ -66,19 +72,64 @@ header p { margin: 0; color: var(--muted); font-size: 14px; }
   color: inherit;
   font-size: 14px;
 }
-.form-row button {
+
+#searchBtn {
+  padding: 10px 16px;
+  border-radius: 8px;
   background: var(--accent);
   color: #032129;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 8px;
+  border: 2px solid #06b6d4;
   cursor: pointer;
   font-weight: 600;
+  min-width: 90px;
+  transition: all 0.2s ease;
 }
 
-.hint { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+#searchBtn:hover {
+  border-color: #0ff;
+  transform: scale(1.05);
+  box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.3);
+}
 
-.results { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+/* Swap Button */
+#swapBtn {
+  position: relative;
+  top: -1px;
+  width: 40px;
+  height: 40px;
+  background-color: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background-image: url('assets/swap1.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size:25px 25px;
+  transition: transform 0.2s;
+}
+
+#swapBtn:hover {
+  transform: scale(1.05);
+}
+
+/* Responsive tweak for small screens */
+@media (max-width: 600px) {
+  .form-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .form-row input {
+    flex: 100%;
+  }
+  /* Adjusted for new layout if form-row is inside results-panel */
+  #searchBtn, #swapBtn {
+    width: 100%;
+  }
+}
+
+.hint { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+
+.results { margin-top: 15px; display: flex; flex-direction: column; gap: 12px; }
 
 .card {
   background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
@@ -99,13 +150,14 @@ header p { margin: 0; color: var(--muted); font-size: 14px; }
 
 .small { font-size: 13px; color: var(--muted); }
 
+/* Sidebar now on the right */
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 .map {
-  height: 260px;
+  height: 260px; /* You can adjust this height */
   background: linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.4));
   border-radius: 8px;
   display: flex;
@@ -114,15 +166,23 @@ header p { margin: 0; color: var(--muted); font-size: 14px; }
   color: var(--muted);
   font-size: 14px;
 }
-.recent { padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.074); }
+.recent {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--card); /* Consistent background with other panels */
+  border: 1px solid rgba(255,255,255,0.02); /* Added border for consistency */
+}
 .recent h4 { margin: 0 0 8px 0; font-size: 14px; }
 .recent ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .recent li { font-size: 13px; color: var(--muted); }
 
-@media (max-width:768px) {
-  .grid { grid-template-columns: 1fr; }
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+  .main-grid {
+    grid-template-columns: 1fr; /* Stack columns on small screens */
+  }
   .sidebar .map { height: 180px; }
 }
 
 .success { color: var(--success); font-weight: 700; }
-.no-results { color: #ffb767; font-weight: 700; }
+.no-results { color: var(--error); font-weight: 700; } /* Use --error variable */
