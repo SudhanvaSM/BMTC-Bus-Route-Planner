@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BMTC Route Planner</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container" role="main">
+    <header>
+      <div>
+        <h1>BMTC Route Planner</h1>
+        <p>Find buses, numbers, and approximate timings between stops in Bengaluru.</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Search + Results Panel -->
+      <div class="panel" aria-labelledby="planner">
+        <h3 id="planner">Plan your trip</h3>
+        <div class="hint">Enter stop names (partial names allowed). Try "Majestic", "Silk Board", "Koramangala".</div>
+
+        <div class="form-row">
+          <input id="fromInput" type="text" placeholder="Start (e.g., Banashankari)" autocomplete="off" />
+          <input id="toInput" type="text" placeholder="Destination (e.g., Electronic City)" autocomplete="off" />
+          <button id="searchBtn">Search</button>
+        </div>
+
+        <div class="form-row">
+          <button id="swapBtn">Swap</button>
+          <div style="flex:1"></div>
+          <button id="useLocationBtn">Use my location</button>
+        </div>
+
+        <div id="status" class="small"></div>
+        <div class="results" id="results"></div>
+      </div>
+
+      <!-- Sidebar: Map + Recent Searches -->
+      <div class="sidebar">
+        <div class="map" id="map">Map preview (placeholder)</div>
+        <div class="recent panel">
+          <h4>Recent searches</h4>
+          <ul id="recentList">
+            <li>No recent searches yet</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
