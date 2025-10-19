@@ -10,6 +10,7 @@ mongoose.connect('mongodb://127.0.0.1:27017/bmtc_routes', {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
+.then(() => console.log('MongoDB connected'))
 .catch(err => console.error('MongoDB error: ', err));
 
 const routeSchema = new mongoose.Schema({
