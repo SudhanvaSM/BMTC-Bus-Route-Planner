@@ -1,19 +1,21 @@
 const fromInput = document.getElementById('fromInput');
 const toInput = document.getElementById('toInput');
 const searchBtn = document.getElementById('searchBtn');
+const swapBtn = document.getElementById('swapBtn');
+const useLocationBtn = document.getElementById('useLocationBtn');
 const resultsEl = document.getElementById('results');
 const recentList = document.getElementById('recentList');
 const statusEl = document.getElementById('status');
 
 let recent = [];
 
-// Helpers
+// Normalization Helper
 const normalize = s => s.trim().toLowerCase();
-const clearResults = () => resultsEl.innerHTML = '';
+const clearResults = () => resultsEl.innerText = '';
 const showStatus = (text, cls) => {
   statusEl.textContent = text;
   statusEl.className = cls ? 'small ' + cls : 'small';
-};
+}
 
 function updateRecentUI() {
   recentList.innerHTML = '';
@@ -25,154 +27,246 @@ function updateRecentUI() {
   });
 }
 
-// Fetch routes
-async function fetchRoutes() {
-  try {
-    const res = await fetch('http://localhost:5000/api/routes');
-    if (!res.ok) throw new Error('Network error');
-    return await res.json();
-  } catch (err) {
-    console.error(err);
-    showStatus('Failed to fetch routes from server', 'no-results');
-    return [];
-  }
+// =============================
+// ROUTE FINDING LOGIC
+// =============================
+
+function buildStopMap(routes) {
+	const stopMap = new Map();
+	routes.forEach(route => {
+		route.stops.forEach(stop => {
+		const n = normalize(stop);
+		if (!stopMap.has(n)) stopMap.set(n, []);
+		stopMap.get(n).push(route);
+		});
+	});
+	return stopMap;
 }
 
-// Render direct route card
-function renderRouteCard(route, from, to) {
-  const stopsNorm = route.stops.map(normalize);
-  let iFrom = stopsNorm.indexOf(normalize(from));
-  let iTo = stopsNorm.indexOf(normalize(to));
-  if (iFrom === -1 || iTo === -1) return null;
-
-  const stops = iFrom < iTo ? route.stops.slice(iFrom, iTo + 1) : route.stops.slice(iTo, iFrom + 1).reverse();
-
-  const div = document.createElement('div');
-  div.className = 'card';
-  div.innerHTML = `
-    <div class="route-title">
-      <div style="display:flex;gap:8px;align-items:center">
-        <div style="font-size:15px">${route.number}</div>
-        <div class="badge">${route.name}</div>
-      </div>
-      <div style="margin-left:auto; font-size:13px" class="small">${route.frequency} • ${route.start_time} - ${route.end_time}</div>
-    </div>
-    <div class="stops">Stops: ${stops.join(' → ')}</div>
-  `;
-  return div;
+function routeKey(obj) {
+	if (obj.type === 'direct') {
+		return `direct:${obj.legs[0].route.number}`;
+	} else {
+		return `${obj.type}:${obj.legs.map(l => l.route.number).join(',')}:${obj.transfers.join('|')}`;
+	}
 }
 
-// Find one-transfer routes
-function findOneTransferRoutes(from, to, allRoutes) {
-  const transfers = [];
-  const fromNorm = normalize(from), toNorm = normalize(to);
+function findRoutes(from, to, routes) {
+	const fromNorm = normalize(from);
+	const toNorm = normalize(to);
+	const stopMap = buildStopMap(routes);
 
-  allRoutes.forEach(r1 => {
-    const r1Norm = r1.stops.map(normalize);
-    if (!r1Norm.some(s => s.startsWith(fromNorm))) return;
+	const allRoutes = [];
+	const seen = new Set();
 
-    allRoutes.forEach(r2 => {
-      if (r1.number === r2.number) return;
-      const r2Norm = r2.stops.map(normalize);
-      if (!r2Norm.some(s => s.startsWith(toNorm))) return;
+	function addUnique(obj) {
+		const k = routeKey(obj);
+		if (!seen.has(k)) {
+		seen.add(k);
+		allRoutes.push(obj);
+		}
+	}
 
-      const commonStops = r1Norm.filter(s => r2Norm.includes(s));
-      commonStops.forEach(cp => transfers.push({ first: r1, second: r2, transferPoint: cp }));
-    });
-  });
+	// =============== DIRECT ROUTES ===============
+	(stopMap.get(fromNorm) || []).forEach(route => {
+		const stopsNorm = route.stops.map(normalize);
+		const iFrom = stopsNorm.indexOf(fromNorm);
+		const iTo = stopsNorm.indexOf(toNorm);
+		if (iFrom !== -1 && iTo !== -1 && iFrom !== iTo) {
+		const subStops = iFrom < iTo
+			? route.stops.slice(iFrom, iTo + 1)
+			: route.stops.slice(iTo, iFrom + 1).reverse();
 
-  return transfers;
+		addUnique({
+			type: "direct",
+			legs: [{ route, stops: subStops }],
+			transfers: []
+		});
+		}
+	});
+
+	// =============== 1-TRANSFER ROUTES ===============
+	(stopMap.get(fromNorm) || []).forEach(r1 => {
+		const r1Norm = r1.stops.map(normalize);
+		const iFrom = r1Norm.indexOf(fromNorm);
+		if (iFrom === -1) return;
+
+		r1Norm.forEach(transfer => {
+		if (transfer === fromNorm || transfer === toNorm) return;
+
+		(stopMap.get(transfer) || []).forEach(r2 => {
+			if (r2.number === r1.number) return;
+			const r2Norm = r2.stops.map(normalize);
+			const iTo = r2Norm.indexOf(toNorm);
+			if (iTo === -1) return;
+
+			const iTransferR1 = r1Norm.indexOf(transfer);
+			const iTransferR2 = r2Norm.indexOf(transfer);
+
+			if (iTransferR1 === -1 || iTransferR2 === -1) return;
+
+			const leg1 = iFrom < iTransferR1
+			? r1.stops.slice(iFrom, iTransferR1 + 1)
+			: r1.stops.slice(iTransferR1, iFrom + 1).reverse();
+			const leg2 = iTransferR2 < iTo
+			? r2.stops.slice(iTransferR2, iTo + 1)
+			: r2.stops.slice(iTo, iTransferR2 + 1).reverse();
+
+			if (leg1.length < 2 || leg2.length < 2) return;
+
+			addUnique({
+			type: "1-transfer",
+			legs: [
+				{ route: r1, stops: leg1 },
+				{ route: r2, stops: leg2 }
+			],
+			transfers: [transfer]
+			});
+		});
+		});
+	});
+
+	// =============== 2-TRANSFER ROUTES ===============
+	(stopMap.get(fromNorm) || []).forEach(r1 => {
+		const r1Norm = r1.stops.map(normalize);
+		const iFrom = r1Norm.indexOf(fromNorm);
+		if (iFrom === -1) return;
+
+		r1Norm.forEach(t1 => {
+		if ([fromNorm, toNorm].includes(t1)) return;
+
+		(stopMap.get(t1) || []).forEach(r2 => {
+			if (r2.number === r1.number) return;
+			const r2Norm = r2.stops.map(normalize);
+
+			r2Norm.forEach(t2 => {
+			if ([t1, fromNorm, toNorm].includes(t2)) return;
+
+			(stopMap.get(t2) || []).forEach(r3 => {
+				if ([r1.number, r2.number].includes(r3.number)) return;
+				const r3Norm = r3.stops.map(normalize);
+				const iTo = r3Norm.indexOf(toNorm);
+				if (iTo === -1) return;
+
+				// Index checks
+				const iT1_r1 = r1Norm.indexOf(t1);
+				const iT1_r2 = r2Norm.indexOf(t1);
+				const iT2_r2 = r2Norm.indexOf(t2);
+				const iT2_r3 = r3Norm.indexOf(t2);
+				if (iT1_r1 === -1 || iT1_r2 === -1 || iT2_r2 === -1 || iT2_r3 === -1) return;
+
+				// Define legs
+				const leg1 = iFrom < iT1_r1
+				? r1.stops.slice(iFrom, iT1_r1 + 1)
+				: r1.stops.slice(iT1_r1, iFrom + 1).reverse();
+				const leg2 = iT1_r2 < iT2_r2
+				? r2.stops.slice(iT1_r2, iT2_r2 + 1)
+				: r2.stops.slice(iT2_r2, iT1_r2 + 1).reverse();
+				const leg3 = iT2_r3 < iTo
+				? r3.stops.slice(iT2_r3, iTo + 1)
+				: r3.stops.slice(iTo, iT2_r3 + 1).reverse();
+
+				if (leg1.length < 2 || leg2.length < 2 || leg3.length < 2) return;
+
+				addUnique({
+				type: "2-transfer",
+				legs: [
+					{ route: r1, stops: leg1 },
+					{ route: r2, stops: leg2 },
+					{ route: r3, stops: leg3 }
+				],
+				transfers: [t1, t2]
+				});
+			});
+			});
+		});
+		});
+	});
+
+	return allRoutes;
 }
 
-// Render transfer card
-function renderTransferCard(t, from, to) {
-  const fNorm = t.first.stops.map(normalize);
-  const sNorm = t.second.stops.map(normalize);
+// =============================
+// RENDER RESULTS
+// =============================
 
-  const iFrom = fNorm.indexOf(normalize(from));
-  const iTransferF = fNorm.indexOf(t.transferPoint);
-  const iTransferS = sNorm.indexOf(t.transferPoint);
-  const iTo = sNorm.indexOf(normalize(to));
+function renderResults(routes, container) {
+	container.innerHTML = '';
 
-  const stopsFirst = iFrom < iTransferF ? t.first.stops.slice(iFrom, iTransferF + 1) : t.first.stops.slice(iTransferF, iFrom + 1).reverse();
-  const stopsSecond = iTransferS < iTo ? t.second.stops.slice(iTransferS + 1, iTo + 1) : t.second.stops.slice(iTo, iTransferS).reverse();
+	routes.forEach((r, idx) => {
+		const routeCard = document.createElement("div");
+		routeCard.className = "p-4 mb-3 border rounded-lg shadow-sm bg-white";
 
-  const div = document.createElement('div');
-  div.className = 'card';
-  div.innerHTML = `
-    <div class="route-title">
-      <div style="display:flex; gap:8px; align-items:center">
-        <div style="font-size:15px">${t.first.number}</div>
-        <div class="badge">${t.first.name}</div>
-      </div>
-      <div style="margin-left:auto; font-size:13px" class="small">${t.first.frequency} • ${t.first.start_time} - ${t.first.end_time}</div>
-    </div>
-    <div class="stops">
-      Stops: ${stopsFirst.join(' → ')} → Transfer at ${t.transferPoint} → ${stopsSecond.join(' → ')} (${t.second.number})
-    </div>
-  `;
-  return div;
+		const typeLabel =
+		r.type === "direct"
+			? "DIRECT"
+			: r.type === "1-transfer"
+			? "1-TRANSFER"
+			: "2-TRANSFER";
+
+		const legsHTML = r.legs
+		.map((leg, i) => {
+			let legHTML = `<strong>${leg.route.number}</strong> (${leg.route.name})<br>Stops: ${leg.stops.join(" → ")}`;
+			if (r.transfers[i-1]) legHTML += `<br>🔁 Transfer at ${r.transfers[i-1]}`;
+			return `<div class="mt-2">${legHTML}</div>`;
+		})
+		.join("");
+
+		routeCard.innerHTML = `
+		<h3 class="font-semibold text-lg mb-1">${idx + 1}. ${typeLabel}</h3>
+		${legsHTML}
+		`;
+
+		container.appendChild(routeCard);
+	});
 }
 
-// Main search
 async function handleSearch() {
-  const from = fromInput.value.trim();
-  const to = toInput.value.trim();
-  clearResults();
+	const from = fromInput.value.trim();
+  	const to = toInput.value.trim();
 
-  if (!from || !to) {
-    showStatus('Please enter both start and destination.', 'no-results');
-    return;
-  }
+    const resultDiv = document.getElementById("results");
+    resultDiv.innerHTML = `<p class="text-gray-500">Searching...</p>`;
 
-  showStatus('Searching...', '');
-  recent.push({ from, to });
-  if (recent.length > 4) recent.shift();
-  updateRecentUI();
+    try {
+      const res = await fetch("http://localhost:5000/api/routes");
+      const routes = await res.json();
 
-  const routes = await fetchRoutes();
-  const direct = routes.filter(r => {
-    const stops = r.stops.map(normalize);
-    const fromMatch = stops.some(s => s.startsWith(normalize(from)));
-    const toMatch = stops.some(s => s.startsWith(normalize(to)));
-    return fromMatch && toMatch;
-  });
+      const allResults = findRoutes(from, to, routes);
+      if (allResults.length === 0) {
+        resultDiv.innerHTML =
+          `<p class="text-red-600 font-medium">No routes found. Try using nearby stop names or slightly different spellings.</p>`;
+        return;
+      }
 
-  const transfers = findOneTransferRoutes(from, to, routes);
+	recent.push({ from, to });
+	updateRecentUI();		
 
-  if (direct.length > 0) {
-    showStatus(`Found ${direct.length} direct route(s).`, 'success');
-    direct.forEach(d => {
-      const card = renderRouteCard(d, from, to);
-      if (card) resultsEl.appendChild(card);
-    });
-  } else if (transfers.length > 0) {
-    showStatus(`Found ${transfers.length} alternate route(s) (1 transfer).`, 'success');
-    transfers.forEach(t => resultsEl.appendChild(renderTransferCard(t, from, to)));
-  } else {
-    showStatus('No routes found. Try using nearby stop names or slightly different names.', 'no-results');
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `<div class="route-title"><div>No matches</div></div><div class="stops">Try partial names (e.g., "Majestic", "Silk Board") or check admin data.</div>`;
-    resultsEl.appendChild(card);
-  }
+    // Sort already done inside findRoutes()
+	allResults.sort((a, b) => a.legs.length - b.legs.length);
+    renderResults(allResults, resultDiv);
+
+    } catch (err) {
+      console.error(err);
+      resultDiv.innerHTML = `<p class="text-red-600">Error connecting to server. Check if backend is running.</p>`;
+    }
 }
 
 // Events
 searchBtn.addEventListener('click', handleSearch);
-[fromInput, toInput].forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); }));
+  [fromInput, toInput].forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); }));
 
 swapBtn.addEventListener('click', () => {
-  const tmp = fromInput.value;
-  fromInput.value = toInput.value;
-  toInput.value = tmp;
-});
+    const tmp = fromInput.value;
+    fromInput.value = toInput.value;
+    toInput.value = tmp;
+  });
 
 useLocationBtn.addEventListener('click', () => {
-  if (!navigator.geolocation) return showStatus('Geolocation not supported', 'no-results');
-  showStatus('Getting your location...', '');
-  navigator.geolocation.getCurrentPosition(pos => {
-    fromInput.value = 'Majestic'; // Demo
-    showStatus(`Location detected. Searching nearby stops...`, '');
-  }, err => showStatus('Unable to get location', 'no-results'));
+    if (!navigator.geolocation) return showStatus('Geolocation not supported', 'no-results');
+    showStatus('Getting your location...', '');
+    navigator.geolocation.getCurrentPosition(pos => {
+      fromInput.value = 'Majestic'; // Demo
+      showStatus(`Location detected. Searching nearby stops...`, '');
+    }, err => showStatus('Unable to get location', 'no-results'));
 });
