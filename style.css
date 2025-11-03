@@ -1,7 +1,7 @@
 :root {
-  --bg: #0f1724;
+  --bg: #e1131300;
   --card: #0b1220;
-  --accent: #06b6d4;
+  --accent: #20bad6;
   --muted: #94a3b8;
   --glass: rgba(255,255,255,0.03);
   --success: #06b6d4; /* Changed for better visibility with white text */
@@ -13,7 +13,7 @@
 body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-  background: linear-gradient(180deg,#071026 0%, #071a2a 100%);
+  background: linear-gradient(180deg, #230928d4 0%, #0b072a 100%);
   color: #fff;
   min-height: 100vh;
   display: flex;
@@ -24,8 +24,8 @@ body {
 
 .container {
   width: 100%;
-  max-width: 1150px;
-  background: linear-gradient(180deg, rgba(25, 189, 201, 0.449), rgba(255,255,255,0.01));
+  max-width: 10000px;
+  background: linear-gradient(180deg, rgba(136, 168, 170, 0.387), rgba(255,255,255,0.01));
   border-radius: 12px;
   padding: 22px;
   box-shadow: 0 10px 30px rgba(4, 19, 86, 0.3);
@@ -35,10 +35,10 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
-header h1 { font-size: 30px; margin: 0; }
-header p { margin: 0; color: var(--muted); font-size: 14px; }
+header h1 { font-size: 40px; margin: 0; }
+header p { margin: 0; color: var(--muted); font-size: 16px; }
 
 /* Renamed and modified grid for main layout */
 .main-grid {
@@ -68,9 +68,9 @@ header p { margin: 0; color: var(--muted); font-size: 14px; }
   padding: 10px 12px;
   border-radius: 8px;
   background: var(--glass);
-  border: 1px solid rgba(255,255,255,0.03);
+  border: 1px solid rgba(255, 255, 255, 0.753);
   color: inherit;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 #searchBtn {
@@ -86,9 +86,9 @@ header p { margin: 0; color: var(--muted); font-size: 14px; }
 }
 
 #searchBtn:hover {
-  border-color: #0ff;
+  /*border-color: #0ff;*/
   transform: scale(1.05);
-  box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.3);
+  /*box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.3);*/
 }
 
 /* Swap Button */
@@ -127,7 +127,7 @@ header p { margin: 0; color: var(--muted); font-size: 14px; }
   }
 }
 
-.hint { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+.hint { color: var(--muted); font-size: 15px; margin-bottom: 12px; }
 
 .results { margin-top: 15px; display: flex; flex-direction: column; gap: 12px; }
 
@@ -156,25 +156,16 @@ header p { margin: 0; color: var(--muted); font-size: 14px; }
   flex-direction: column;
   gap: 12px;
 }
-.map {
-  height: 260px; /* You can adjust this height */
-  background: linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.4));
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 14px;
-}
+
 .recent {
   padding: 12px;
   border-radius: 8px;
   background: var(--card); /* Consistent background with other panels */
   border: 1px solid rgba(255,255,255,0.02); /* Added border for consistency */
 }
-.recent h4 { margin: 0 0 8px 0; font-size: 14px; }
+.recent h4 { margin: 0 0 8px 0; font-size: 18px; }
 .recent ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.recent li { font-size: 13px; color: var(--muted); }
+.recent li { font-size: 12px; color: var(--muted); }
 
 /* Media query for smaller screens */
 @media (max-width: 768px) {
